@@ -1,0 +1,16 @@
+/* Only applied when split mode is active - controlled by JS */
+body.wiki-split-active {
+  --wiki-split-width: 50%;
+  margin-left: var(--wiki-split-width) !important;
+  width: calc(100% - var(--wiki-split-width)) !important;
+  position: relative !important;
+  overflow-x: hidden !important;
+}
+
+body.wiki-split-active nav,
+body.wiki-split-active aside,
+body.wiki-split-active [class*="sidebar"],
+body.wiki-split-active [class*="Sidebar"],
+body.wiki-split-active [class*="toc"] {
+  display: none !important;
+}
