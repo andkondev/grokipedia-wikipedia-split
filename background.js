@@ -49,6 +49,51 @@ function safeDecodeURIComponent(value) {
   }
 }
 
+function normalizeArticleKey(article) {
+  return article.replace(/\s+/g, '_').replace(/[()]/g, '').toLowerCase().trim();
+}
+
+function getWikipediaArticleKey(url) {
+  if (!url || !isWikipediaArticlePath(url.pathname)) {
+    return '';
+  }
+
+  const article = safeDecodeURIComponent(url.pathname.slice('/wiki/'.length));
+  return normalizeArticleKey(article);
+}
+
+function getGrokipediaArticleKey(url) {
+  if (!url || !isGrokipediaArticlePath(url.pathname)) {
+    return '';
+  }
+
+  const article = safeDecodeURIComponent(url.pathname.slice('/page/'.length));
+  return normalizeArticleKey(article);
+}
+
+async function shouldShowSplitMenus(splitState) {
+  if (!splitState?.splitTabId) {
+    return false;
+  }
+
+  let splitTab = null;
+  try {
+    splitTab = await chrome.tabs.get(splitState.splitTabId);
+  } catch {
+    return false;
+  }
+
+  const effectiveWikipediaUrl = splitState.wikipediaUrl || '';
+  const grokiKey = getGrokipediaArticleKey(parseUrl(splitTab.url || ''));
+  const wikiKey = getWikipediaArticleKey(parseUrl(effectiveWikipediaUrl));
+
+  if (grokiKey && wikiKey && grokiKey === wikiKey) {
+    return false;
+  }
+
+  return true;
+}
+
 function encodePathPreservingSlashes(path) {
   return path
     .split('/')
@@ -75,7 +120,7 @@ function toWikipediaTitleCase(article) {
         return lowerWord;
       }
 
-      if (isAllLower) {
+      if (index === 0 && isAllLower) {
         return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
       }
 
@@ -102,19 +147,43 @@ async function clearSplitState() {
   });
 }
 
+async function getLiveSplitSnapshot(tabId) {
+  try {
+    const result = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const container = document.getElementById('wiki-split-container');
+        const iframe = document.getElementById('wiki-split-iframe');
+        return {
+          hasSplit: Boolean(container),
+          wikipediaUrl: iframe?.src || null
+        };
+      }
+    });
+
+    const snapshot = result?.[0]?.result;
+    return {
+      hasSplit: snapshot?.hasSplit === true,
+      wikipediaUrl: typeof snapshot?.wikipediaUrl === 'string' ? snapshot.wikipediaUrl : null
+    };
+  } catch {
+    return { hasSplit: false, wikipediaUrl: null };
+  }
+}
+
 function createContextMenus() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: CONTEXT_MENU_WIKI,
       title: 'Open in Grokipedia Split View',
-      contexts: ['page'],
+      contexts: ['page', 'frame'],
       documentUrlPatterns: ['https://*.wikipedia.org/wiki/*']
     });
 
     chrome.contextMenus.create({
       id: CONTEXT_MENU_GROKI,
       title: 'Open in Wikipedia Split View',
-      contexts: ['page'],
+      contexts: ['page', 'frame'],
       documentUrlPatterns: ['https://grokipedia.com/page/*']
     });
   });
@@ -125,12 +194,22 @@ async function initContextMenu() {
   const enabled = syncResult.contextMenuEnabled !== false;
   const localResult = await getSplitState();
 
-  if (enabled && !localResult.splitTabId) {
-    createContextMenus();
+  if (!enabled) {
+    chrome.contextMenus.removeAll();
     return;
   }
 
-  chrome.contextMenus.removeAll();
+  if (localResult.splitTabId) {
+    const showSplitMenus = await shouldShowSplitMenus(localResult);
+    if (showSplitMenus) {
+      createContextMenus();
+    } else {
+      chrome.contextMenus.removeAll();
+    }
+    return;
+  }
+
+  createContextMenus();
 }
 
 async function updateContextMenu(enabled) {
@@ -140,9 +219,22 @@ async function updateContextMenu(enabled) {
   }
 
   const localResult = await getSplitState();
-  if (!localResult.splitTabId) {
-    createContextMenus();
+  if (localResult.splitTabId) {
+    const showSplitMenus = await shouldShowSplitMenus(localResult);
+    if (showSplitMenus) {
+      createContextMenus();
+    } else {
+      chrome.contextMenus.removeAll();
+    }
+    return;
   }
+
+  createContextMenus();
+}
+
+async function isSyncAcrossPanesEnabled() {
+  const result = await chrome.storage.sync.get(['syncArticlesAcrossPanes']);
+  return result.syncArticlesAcrossPanes === true;
 }
 
 function clearPendingNavigation(tabId) {
@@ -212,7 +304,7 @@ async function activateSplitView(tabId, wikipediaUrl = null) {
   }
 
   await setSplitState(tabId, wikipediaUrl);
-  chrome.contextMenus.removeAll();
+  await initContextMenu();
   console.log('[Grokipedia Split] Entered split view on tab', tabId);
 }
 
@@ -337,6 +429,122 @@ function buildWikipediaUrlFromArticle(article) {
   return `https://en.wikipedia.org/wiki/${encodePathPreservingSlashes(titleCaseArticle)}`;
 }
 
+async function ensureWikipediaFrameUrl(tabId, wikipediaUrl) {
+  await setSplitState(tabId, wikipediaUrl);
+  await initContextMenu();
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: recreateWikiFrame,
+      args: [wikipediaUrl]
+    });
+    return true;
+  } catch {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: injectWikipediaFrame,
+        args: [wikipediaUrl]
+      });
+      return true;
+    } catch (error) {
+      console.log('[Grokipedia Split] Failed to update Wikipedia pane:', error);
+      return false;
+    }
+  }
+}
+
+async function navigateSplitTabToGrokipedia(tabId, grokipediaUrl, wikipediaUrl) {
+  if (pendingNavigations.has(tabId)) {
+    await showToastInTab(tabId, showErrorToast, [
+      'Still Loading',
+      'Split view navigation is already in progress.'
+    ]);
+    return false;
+  }
+
+  setPendingNavigation(tabId, wikipediaUrl);
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: (url) => {
+        window.location.href = url;
+      },
+      args: [grokipediaUrl]
+    });
+    return true;
+  } catch (error) {
+    clearPendingNavigation(tabId);
+    await exitSplitView(tabId);
+    await showToastInTab(tabId, showErrorToast, [
+      'Navigation Error',
+      'Could not open the Grokipedia page.'
+    ]);
+    console.log('[Grokipedia Split] Failed to sync to Grokipedia:', error);
+    return false;
+  }
+}
+
+async function syncFromWikipediaSource(tabId, wikipediaUrl, forceSyncToGrokipedia = false) {
+  const targetUrl = parseUrl(wikipediaUrl);
+  if (
+    !targetUrl ||
+    targetUrl.protocol !== 'https:' ||
+    !isWikipediaHost(targetUrl.hostname)
+  ) {
+    return false;
+  }
+
+  const canSyncToGrokipedia = isWikipediaArticlePath(targetUrl.pathname);
+  const syncAcrossPanes = forceSyncToGrokipedia || (await isSyncAcrossPanesEnabled());
+
+  if (!syncAcrossPanes || !canSyncToGrokipedia) {
+    return ensureWikipediaFrameUrl(tabId, targetUrl.href);
+  }
+
+  const wikipediaArticle = safeDecodeURIComponent(targetUrl.pathname.slice('/wiki/'.length));
+  const grokipediaUrl = await resolveGrokipediaUrl(wikipediaArticle);
+
+  if (!grokipediaUrl) {
+    const frameUpdated = await ensureWikipediaFrameUrl(tabId, targetUrl.href);
+    await showToastInTab(tabId, showErrorToast, [
+      'Article Not Found',
+      "Grokipedia doesn't have this article yet."
+    ]);
+    return frameUpdated;
+  }
+
+  await setSplitState(tabId, targetUrl.href);
+  await initContextMenu();
+  return navigateSplitTabToGrokipedia(tabId, grokipediaUrl, targetUrl.href);
+}
+
+async function syncFromGrokipediaSource(tabId, grokipediaUrl) {
+  const sourceUrl = parseUrl(grokipediaUrl);
+  if (
+    !sourceUrl ||
+    sourceUrl.protocol !== 'https:' ||
+    !isGrokipediaHost(sourceUrl.hostname) ||
+    !isGrokipediaArticlePath(sourceUrl.pathname)
+  ) {
+    return false;
+  }
+
+  const article = safeDecodeURIComponent(sourceUrl.pathname.slice('/page/'.length));
+  const wikipediaUrl = buildWikipediaUrlFromArticle(article);
+  if (!wikipediaUrl) {
+    await showToastInTab(tabId, showErrorToast, [
+      'Invalid Article',
+      'Could not build a Wikipedia URL for this page.'
+    ]);
+    return false;
+  }
+
+  return ensureWikipediaFrameUrl(tabId, wikipediaUrl);
+}
+
 async function handleWikiLinkClicked(message, sender) {
   const senderTabId = sender.tab?.id;
   if (typeof senderTabId !== 'number' || sender.frameId <= 0) {
@@ -358,17 +566,7 @@ async function handleWikiLinkClicked(message, sender) {
     return false;
   }
 
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId: senderTabId },
-      func: recreateWikiFrame,
-      args: [targetUrl.href]
-    });
-    return true;
-  } catch (error) {
-    console.log('[Grokipedia Split] Failed to recreate iframe:', error);
-    return false;
-  }
+  return syncFromWikipediaSource(senderTabId, targetUrl.href, false);
 }
 
 async function handleTabUpdated(tabId, changeInfo, tab) {
@@ -377,9 +575,13 @@ async function handleTabUpdated(tabId, changeInfo, tab) {
 
     if (changedUrl) {
       const splitState = await getSplitState();
-      if (splitState.splitTabId === tabId && !isGrokipediaHost(changedUrl.hostname)) {
-        await exitSplitView(tabId);
-        return;
+      if (splitState.splitTabId === tabId) {
+        if (!isGrokipediaHost(changedUrl.hostname)) {
+          await exitSplitView(tabId);
+          return;
+        }
+
+        await initContextMenu();
       }
     }
   }
@@ -401,10 +603,13 @@ async function handleTabUpdated(tabId, changeInfo, tab) {
         func: injectWikipediaFrame,
         args: [pending.wikipediaUrl]
       });
+      await initContextMenu();
     } catch (error) {
       console.log('[Grokipedia Split] Failed to inject split frame:', error);
       await exitSplitView(tabId);
     }
+
+    return;
   }
 
   if (changeInfo.status !== 'complete' || !tab?.url) {
@@ -421,6 +626,22 @@ async function handleTabUpdated(tabId, changeInfo, tab) {
     return;
   }
 
+  const syncAcrossPanes = await isSyncAcrossPanesEnabled();
+  let desiredWikipediaUrl = splitState.wikipediaUrl;
+
+  if (syncAcrossPanes && isGrokipediaArticlePath(loadedUrl.pathname)) {
+    const article = safeDecodeURIComponent(loadedUrl.pathname.slice('/page/'.length));
+    const mappedWikipediaUrl = buildWikipediaUrlFromArticle(article);
+    if (mappedWikipediaUrl) {
+      desiredWikipediaUrl = mappedWikipediaUrl;
+    }
+  }
+
+  if (desiredWikipediaUrl !== splitState.wikipediaUrl) {
+    await setSplitState(tabId, desiredWikipediaUrl);
+    await initContextMenu();
+  }
+
   try {
     const domCheck = await chrome.scripting.executeScript({
       target: { tabId },
@@ -428,13 +649,20 @@ async function handleTabUpdated(tabId, changeInfo, tab) {
     });
 
     if (domCheck[0]?.result) {
+      if (desiredWikipediaUrl !== splitState.wikipediaUrl) {
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          func: recreateWikiFrame,
+          args: [desiredWikipediaUrl]
+        });
+      }
       return;
     }
 
     await chrome.scripting.executeScript({
       target: { tabId },
       func: injectWikipediaFrame,
-      args: [splitState.wikipediaUrl]
+      args: [desiredWikipediaUrl]
     });
   } catch (error) {
     console.log('[Grokipedia Split] Failed to restore split frame after refresh:', error);
@@ -457,7 +685,70 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   })();
 });
 
+async function handleSplitContextMenuClick(info, tab) {
+  if (!tab || typeof tab.id !== 'number') {
+    return;
+  }
+
+  const splitState = await getSplitState();
+  const liveSnapshot = await getLiveSplitSnapshot(tab.id);
+  const splitActive = liveSnapshot.hasSplit || splitState.splitTabId === tab.id;
+  if (!splitActive) {
+    return;
+  }
+
+  const effectiveWikipediaUrl = liveSnapshot.wikipediaUrl || splitState.wikipediaUrl || '';
+  if (splitState.splitTabId !== tab.id || effectiveWikipediaUrl !== splitState.wikipediaUrl) {
+    await setSplitState(tab.id, effectiveWikipediaUrl || null);
+  }
+
+  const sourceUrl = parseUrl(info.frameUrl || info.pageUrl || tab.url || '');
+  const tabUrl = parseUrl(tab.url || '');
+
+  if (info.menuItemId === CONTEXT_MENU_WIKI) {
+    const wikipediaSource =
+      sourceUrl &&
+      sourceUrl.protocol === 'https:' &&
+      isWikipediaHost(sourceUrl.hostname) &&
+      isWikipediaArticlePath(sourceUrl.pathname)
+        ? sourceUrl
+        : parseUrl(effectiveWikipediaUrl);
+
+    if (!wikipediaSource) {
+      return;
+    }
+
+    await syncFromWikipediaSource(tab.id, wikipediaSource.href, true);
+    return;
+  }
+
+  if (info.menuItemId === CONTEXT_MENU_GROKI) {
+    const grokipediaSource =
+      sourceUrl &&
+      sourceUrl.protocol === 'https:' &&
+      isGrokipediaHost(sourceUrl.hostname) &&
+      isGrokipediaArticlePath(sourceUrl.pathname)
+        ? sourceUrl
+        : tabUrl;
+
+    if (
+      !grokipediaSource ||
+      grokipediaSource.protocol !== 'https:' ||
+      !isGrokipediaHost(grokipediaSource.hostname) ||
+      !isGrokipediaArticlePath(grokipediaSource.pathname)
+    ) {
+      return;
+    }
+
+    await syncFromGrokipediaSource(tab.id, grokipediaSource.href);
+  }
+}
+
 chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (!tab) {
+    return;
+  }
+
   if (
     info.menuItemId !== CONTEXT_MENU_WIKI &&
     info.menuItemId !== CONTEXT_MENU_GROKI
@@ -465,11 +756,21 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     return;
   }
 
-  if (!tab) {
-    return;
-  }
+  void (async () => {
+    const splitState = await getSplitState();
+    if (splitState.splitTabId === tab.id) {
+      await handleSplitContextMenuClick(info, tab);
+      return;
+    }
 
-  void handleSplitView(tab);
+    const liveSnapshot = await getLiveSplitSnapshot(tab.id);
+    if (liveSnapshot.hasSplit) {
+      await handleSplitContextMenuClick(info, tab);
+      return;
+    }
+
+    await handleSplitView(tab);
+  })();
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -657,6 +958,7 @@ async function handleSplitView(tab) {
         func: injectWikipediaFrame,
         args: [wikipediaUrl]
       });
+      await initContextMenu();
     } catch (error) {
       await exitSplitView(tab.id);
       await showToastInTab(tab.id, showErrorToast, [
@@ -824,7 +1126,7 @@ function injectWikipediaFrame(wikipediaUrl) {
     flex-shrink: 0;
   `;
   header.innerHTML = `
-    <a href="${wikipediaUrl}" style="color: #0066cc; text-decoration: none;"><- Back to Wikipedia article</a>
+    <a href="${wikipediaUrl}" style="color: #0066cc; text-decoration: none;"><- Back to Wikipedia article (close Grokipedia)</a>
     <button id="wiki-split-close" style="
       border: none;
       background: #e0e0e0;
@@ -832,7 +1134,7 @@ function injectWikipediaFrame(wikipediaUrl) {
       border-radius: 4px;
       cursor: pointer;
       font-size: 12px;
-    ">Close</button>
+    ">Close Wikipedia</button>
   `;
 
   const iframe = document.createElement('iframe');
