@@ -1,36 +1,63 @@
-// Only run if we're inside an iframe
+function isWikipediaHost(hostname) {
+  return hostname === 'wikipedia.org' || hostname.endsWith('.wikipedia.org');
+}
+
+function installClickHandler() {
+  if (window.__wikiSplitClickHandlerInstalled) {
+    return;
+  }
+  window.__wikiSplitClickHandlerInstalled = true;
+
+  document.addEventListener(
+    'click',
+    (event) => {
+      const link = event.target.closest('a');
+      if (!link) {
+        return;
+      }
+
+      const href = link.getAttribute('href');
+      if (!href) {
+        return;
+      }
+
+      let fullUrl;
+      try {
+        fullUrl = new URL(href, window.location.href);
+      } catch {
+        return;
+      }
+
+      if (!['http:', 'https:'].includes(fullUrl.protocol)) {
+        return;
+      }
+
+      if (!isWikipediaHost(fullUrl.hostname)) {
+        event.preventDefault();
+        window.open(fullUrl.href, '_blank', 'noopener');
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      chrome.runtime.sendMessage({
+        type: 'wikiLinkClicked',
+        url: fullUrl.href
+      });
+    },
+    true
+  );
+}
+
 if (window.self !== window.top) {
-  document.addEventListener('click', (e) => {
-    // Find closest anchor tag
-    const link = e.target.closest('a');
-    if (!link) return;
-    
-    const href = link.getAttribute('href');
-    if (!href) return;
-    
-    // Build full URL
-    let fullUrl;
-    try {
-      fullUrl = new URL(href, window.location.href).href;
-    } catch {
-      return; // Invalid URL, let it fail naturally
-    }
-    
-    // Only intercept Wikipedia links
-    if (!fullUrl.includes('wikipedia.org')) {
-      // External link - open in new tab
-      e.preventDefault();
-      window.open(fullUrl, '_blank');
+  chrome.runtime.sendMessage({ type: 'queryWikiIframeIntercept' }, (response) => {
+    if (chrome.runtime.lastError) {
       return;
     }
-    
-    // Prevent default navigation
-    e.preventDefault();
-    
-    // Send message to background script to update iframe
-    chrome.runtime.sendMessage({
-      type: 'wikiLinkClicked',
-      url: fullUrl
-    });
-  }, true); // Use capture to get it before other handlers
+
+    if (response?.allow) {
+      installClickHandler();
+    }
+  });
 }

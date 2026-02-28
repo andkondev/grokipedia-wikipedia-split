@@ -3,7 +3,7 @@
   "name": "Grokipedia + Wikipedia Split View",
   "version": "1.0",
   "description": "View Grokipedia with Wikipedia side-by-side",
-  "permissions": ["activeTab", "notifications", "scripting", "storage", "webNavigation", "contextMenus"],
+  "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
   "host_permissions": ["https://grokipedia.com/*", "https://en.wikipedia.org/*"],
   "background": {
     "service_worker": "background.js"
