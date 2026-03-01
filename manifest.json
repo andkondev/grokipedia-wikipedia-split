@@ -14,7 +14,7 @@
     "js": ["grokipedia-early.js"],
     "run_at": "document_start"
   }, {
-    "matches": ["https://*.wikipedia.org/*"],
+    "matches": ["https://en.wikipedia.org/*"],
     "js": ["wikipedia-iframe.js"],
     "run_at": "document_end",
     "all_frames": true
@@ -30,6 +30,10 @@
   },
   "options_ui": {
     "page": "options.html",
-    "open_in_tab": false
-  }
+    "open_in_tab": true
+  },
+  "web_accessible_resources": [{
+    "resources": ["icon48.png"],
+    "matches": ["https://grokipedia.com/*", "https://en.wikipedia.org/*"]
+  }]
 }

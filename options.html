@@ -6,9 +6,23 @@
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
-      padding: 20px;
-      min-width: 300px;
+      margin: 0;
       background: #f9f9f9;
+      color: #222;
+    }
+    .page {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 28px 20px 24px;
+    }
+    .title {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 8px;
+    }
+    .subtitle {
+      margin: 0 0 20px;
+      color: #666;
     }
     .option {
       display: flex;
@@ -47,27 +61,47 @@
     .saved.show {
       opacity: 1;
     }
+    .footer {
+      margin-top: 18px;
+      font-size: 13px;
+      color: #666;
+    }
+    .footer a {
+      color: #0b57d0;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
-  <div class="option">
-    <input type="checkbox" id="contextMenu" checked>
-    <label for="contextMenu">
-      <div class="option-title">Show in right-click menu</div>
-      <div class="option-desc">Add "Open in Split View" to the context menu on Wikipedia and Grokipedia pages</div>
-    </label>
-  </div>
+  <div class="page">
+    <h1 class="title">Grokipedia + Wikipedia Split View</h1>
+    <p class="subtitle">Configure context menu behavior and pane syncing.</p>
 
-  <div class="option" style="margin-top: 12px;">
-    <input type="checkbox" id="syncArticles">
-    <label for="syncArticles">
-      <div class="option-title">Sync Articles Across Panes</div>
-      <div class="option-desc">When enabled, opening a new article updates the other pane too.</div>
-    </label>
+    <div class="option">
+      <input type="checkbox" id="contextMenu" checked>
+      <label for="contextMenu">
+        <div class="option-title">Show in right-click menu</div>
+        <div class="option-desc">Add "Open in Split View" to the context menu on Wikipedia and Grokipedia pages</div>
+      </label>
+    </div>
+
+    <div class="option" style="margin-top: 12px;">
+      <input type="checkbox" id="syncArticles">
+      <label for="syncArticles">
+        <div class="option-title">Sync Articles Across Panes (buggy)</div>
+        <div class="option-desc">When enabled, opening a new article updates the other pane too. Caution: May break because of non-uniform Grokipedia URLs.</div>
+      </label>
+    </div>
+
+    <div class="saved" id="saved">Settings saved</div>
+
+    <div class="footer">
+      Made by <a href="https://andkon.dev" target="_blank" rel="noopener">andkon.dev</a>
+    </div>
   </div>
-  
-  <div class="saved" id="saved">Settings saved</div>
-  
   <script src="options.js"></script>
 </body>
 </html>
