@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grokipedia + Wikipedia Split View</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --line: #dde3ed;
+      --text: #1d2736;
+      --muted: #55657b;
+      --link: #0b57d0;
+      --accent: #1f7f3f;
+      --accent-bg: #effaf2;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(900px 500px at 100% -10%, #d9e7ff 0%, rgba(217, 231, 255, 0) 60%),
+        radial-gradient(700px 500px at -10% 15%, #e8fff1 0%, rgba(232, 255, 241, 0) 65%),
+        var(--bg);
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 34px 24px 40px;
+    }
+
+    .hero {
+      display: flex;
+      gap: 20px;
+      align-items: flex-end;
+      margin-bottom: 14px;
+    }
+
+    .logo {
+      width: 128px;
+      height: 128px;
+      border-radius: 4px;
+      object-fit: cover;
+      box-shadow: 0 4px 16px rgba(17, 24, 39, 0.14);
+      background: #fff;
+      border: 1px solid #e7e7e7;
+    }
+
+    .hero-copy {
+      min-width: 0;
+      padding-bottom: 4px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 34px;
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.35;
+      max-width: 760px;
+    }
+
+    .anchor-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+      margin-bottom: 12px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #234;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .chip:hover {
+      border-color: #c3d2eb;
+      background: #f7fbff;
+    }
+
+    .card {
+      margin-top: 12px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(31, 41, 55, 0.05);
+      padding: 18px 18px 16px;
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+    }
+
+    .card h3 {
+      margin: 14px 0 8px;
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    p {
+      margin: 9px 0;
+      color: #2f3d52;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    ul {
+      margin: 8px 0 10px 18px;
+      padding: 0;
+      color: #2f3d52;
+    }
+
+    li {
+      margin: 5px 0;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #f4f6fb;
+      border: 1px solid #e3e8f2;
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-size: 13px;
+    }
+
+    .note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #cde8d5;
+      background: var(--accent-bg);
+      color: #1e5f35;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .links a {
+      color: var(--link);
+      text-decoration: none;
+    }
+
+    .links a:hover {
+      text-decoration: underline;
+    }
+
+    .footer {
+      margin-top: 14px;
+      color: #5c6f89;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 900px) {
+      .page {
+        padding: 20px 16px 28px;
+      }
+
+      .hero {
+        align-items: center;
+      }
+
+      .logo {
+        width: 96px;
+        height: 96px;
+      }
+
+      h1 {
+        font-size: 28px;
+      }
+
+      .subtitle {
+        font-size: 14px;
+      }
+
+      .card {
+        padding: 15px 14px 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <img src="icon128.png" alt="Grokipedia + Wikipedia Split View logo" class="logo">
+      <div class="hero-copy">
+        <h1>Grokipedia + Wikipedia Split View</h1>
+        <p class="subtitle">Official support and privacy page for the Chrome extension that opens Grokipedia and Wikipedia side by side in a single tab.</p>
+      </div>
+    </header>
+
+    <nav class="anchor-row">
+      <a class="chip" href="#overview">Overview</a>
+      <a class="chip" href="#privacy">Privacy Policy</a>
+      <a class="chip" href="#support">Support</a>
+      <a class="chip" href="#links">Links</a>
+    </nav>
+
+    <section class="card" id="overview">
+      <h2>Overview</h2>
+      <p>This extension has one purpose: help users compare related pages on <code>grokipedia.com</code> and <code>en.wikipedia.org</code> side by side. It can be launched from the toolbar button or right-click context menu on supported pages.</p>
+      <p>When exact title matching is not available, the extension falls back to search pages so users can continue navigating in split view.</p>
+    </section>
+
+    <section class="card" id="privacy">
+      <h2>Privacy Policy</h2>
+      <p>This Privacy Policy applies to the <strong>Grokipedia + Wikipedia Split View</strong> Chrome extension.</p>
+
+      <h3>Data processed by the extension</h3>
+      <ul>
+        <li>Page URLs on supported domains to determine whether split view can be opened and to keep both panes in sync.</li>
+        <li>On-page article title text (for example, a page <code>&lt;h1&gt;</code>) to resolve Wikipedia targets when needed.</li>
+      </ul>
+
+      <h3>Data stored in Chrome storage</h3>
+      <ul>
+        <li><code>chrome.storage.sync</code>: user preferences such as context-menu enabled state and optional pane-sync setting.</li>
+        <li><code>chrome.storage.local</code>: split-view runtime state such as split tab ID, current Wikipedia URL values, and one-time pin reminder flags.</li>
+      </ul>
+
+      <h3>Network requests</h3>
+      <ul>
+        <li>The extension sends requests only to <code>grokipedia.com</code> and <code>en.wikipedia.org</code> to resolve or validate target article pages used by split view.</li>
+        <li>No third-party analytics, advertising, or telemetry endpoints are used by the extension.</li>
+      </ul>
+
+      <h3>What the extension does not collect</h3>
+      <ul>
+        <li>No personally identifiable information such as name, address, phone number, or government identifiers.</li>
+        <li>No authentication secrets such as passwords, tokens, or security answers.</li>
+        <li>No payment, health, precise location, or personal communications data.</li>
+      </ul>
+
+      <h3>Data sharing and selling</h3>
+      <p>Developer does not sell user data and does not transfer user data to third parties except as required to load and request pages from the supported sites named above.</p>
+
+      <h3>Data retention and deletion</h3>
+      <p>Stored extension settings/state remain in Chrome storage until changed by the user, cleared by the browser, or removed when the extension is uninstalled.</p>
+
+      <h3>Security</h3>
+      <p>Data handled by the extension is limited to functional operation and is stored using Chrome extension storage APIs. No separate backend database is used by this extension.</p>
+
+      <h3>Policy updates</h3>
+      <p>Privacy policy updates may be posted on this page. Material changes will be reflected with a new "Last updated" date.</p>
+
+      <div class="note">Last updated: March 3, 2026 (America/Chicago).</div>
+    </section>
+
+    <section class="card links" id="support">
+      <h2>Support</h2>
+      <p>Email: <a href="mailto:andkon@andkon.com">andkon@andkon.com</a></p>
+      <p>Issues: <a href="https://github.com/andkondev/grokipedia-wikipedia-split/issues" target="_blank" rel="noopener">github.com/andkondev/grokipedia-wikipedia-split/issues</a></p>
+      <p>Best report format: page URL, expected behavior, actual behavior, and screenshot/video.</p>
+    </section>
+
+    <section class="card links" id="links">
+      <h2>Links</h2>
+      <p>Repository: <a href="https://github.com/andkondev/grokipedia-wikipedia-split" target="_blank" rel="noopener">github.com/andkondev/grokipedia-wikipedia-split</a></p>
+      <p>Developer site: <a href="https://andkon.dev" target="_blank" rel="noopener">andkon.dev</a></p>
+    </section>
+
+    <div class="footer">
+      Chrome and Chrome Web Store are trademarks of Google LLC.
+    </div>
+  </main>
+</body>
+</html>
