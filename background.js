@@ -1634,7 +1634,9 @@ function injectWikipediaFrame(wikipediaUrl) {
   const style = document.createElement('style');
   style.id = 'wiki-split-styles';
   style.textContent = `
-    main, article, [class*="content"], [class*="Content"], [class*="article"], [class*="Article"] {
+    body.wiki-split-active main,
+    body.wiki-split-active article,
+    body.wiki-split-active [role="main"] {
       max-width: 100% !important;
       width: 100% !important;
       margin-left: 0 !important;
