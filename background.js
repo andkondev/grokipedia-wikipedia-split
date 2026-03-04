@@ -4,6 +4,10 @@ const NAVIGATION_TIMEOUT_MS = 15000;
 const WIKIPEDIA_TARGET_CACHE_TTL_MS = 8000;
 const PIN_REMINDER_SHOWN_KEY = 'pinReminderShown';
 const PIN_REMINDER_PENDING_KEY = 'pinReminderPending';
+const SPLIT_WIDTH_PERCENT_KEY = 'splitWidthPercent';
+const DEFAULT_SPLIT_WIDTH_PERCENT = 50;
+const MIN_SPLIT_WIDTH_PERCENT = 20;
+const MAX_SPLIT_WIDTH_PERCENT = 80;
 const LOWERCASE_WIKI_WORDS = new Set([
   'of',
   'the',
@@ -23,6 +27,7 @@ const wikipediaTargetCacheByTab = new Map();
 const wikipediaTargetInflightByKey = new Map();
 let contextMenuMutationQueue = Promise.resolve();
 let pinReminderShouldShowCache = null;
+let splitWidthPercentCache = null;
 
 function parseUrl(value) {
   try {
@@ -157,6 +162,35 @@ async function clearSplitState() {
     wikipediaUrl: null,
     wikipediaFrameUrl: null
   });
+}
+
+function normalizeSplitWidthPercent(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return DEFAULT_SPLIT_WIDTH_PERCENT;
+  }
+
+  return Math.max(MIN_SPLIT_WIDTH_PERCENT, Math.min(MAX_SPLIT_WIDTH_PERCENT, numeric));
+}
+
+async function getSplitWidthPercent() {
+  if (typeof splitWidthPercentCache === 'number') {
+    return splitWidthPercentCache;
+  }
+
+  const result = await chrome.storage.local.get([SPLIT_WIDTH_PERCENT_KEY]);
+  const normalized = normalizeSplitWidthPercent(result[SPLIT_WIDTH_PERCENT_KEY]);
+  splitWidthPercentCache = normalized;
+  return normalized;
+}
+
+async function setSplitWidthPercent(value) {
+  const normalized = normalizeSplitWidthPercent(value);
+  splitWidthPercentCache = normalized;
+  await chrome.storage.local.set({
+    [SPLIT_WIDTH_PERCENT_KEY]: normalized
+  });
+  return normalized;
 }
 
 function getArticleCacheKey(article) {
@@ -756,12 +790,13 @@ async function ensureWikipediaFrameUrl(tabId, wikipediaUrl, stateWikipediaUrl = 
   }
 
   await setSplitState(tabId, stateUrlToPersist || null, frameUrlToPersist || null);
+  const splitWidthPercent = await getSplitWidthPercent();
 
   try {
     await chrome.scripting.executeScript({
       target: { tabId },
       func: recreateWikiFrame,
-      args: [wikipediaUrl]
+      args: [wikipediaUrl, splitWidthPercent]
     });
     return true;
   } catch {
@@ -769,7 +804,7 @@ async function ensureWikipediaFrameUrl(tabId, wikipediaUrl, stateWikipediaUrl = 
       await chrome.scripting.executeScript({
         target: { tabId },
         func: injectWikipediaFrame,
-        args: [wikipediaUrl]
+        args: [wikipediaUrl, splitWidthPercent]
       });
       return true;
     } catch (error) {
@@ -942,10 +977,11 @@ async function handleTabUpdated(tabId, changeInfo, tab) {
     clearPendingNavigation(tabId);
 
     try {
+      const splitWidthPercent = await getSplitWidthPercent();
       await chrome.scripting.executeScript({
         target: { tabId },
         func: injectWikipediaFrame,
-        args: [pending.wikipediaUrl]
+        args: [pending.wikipediaUrl, splitWidthPercent]
       });
     } catch (error) {
       console.log('[Grokipedia Split] Failed to inject split frame:', error);
@@ -1006,6 +1042,7 @@ async function handleTabUpdated(tabId, changeInfo, tab) {
   }
 
   try {
+    const splitWidthPercent = await getSplitWidthPercent();
     const domCheck = await chrome.scripting.executeScript({
       target: { tabId },
       func: () => {
@@ -1024,7 +1061,7 @@ async function handleTabUpdated(tabId, changeInfo, tab) {
         await chrome.scripting.executeScript({
           target: { tabId },
           func: recreateWikiFrame,
-          args: [desiredFrameWikipediaUrl]
+          args: [desiredFrameWikipediaUrl, splitWidthPercent]
         });
       }
       return;
@@ -1033,7 +1070,7 @@ async function handleTabUpdated(tabId, changeInfo, tab) {
     await chrome.scripting.executeScript({
       target: { tabId },
       func: injectWikipediaFrame,
-      args: [desiredFrameWikipediaUrl]
+      args: [desiredFrameWikipediaUrl, splitWidthPercent]
     });
   } catch (error) {
     console.log('[Grokipedia Split] Failed to restore split frame after refresh:', error);
@@ -1223,6 +1260,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     return true;
   }
+
+  if (messageType === 'setSplitWidthPercent') {
+    const senderTabId = sender.tab?.id;
+
+    void (async () => {
+      if (typeof senderTabId !== 'number') {
+        sendResponse({ ok: false });
+        return;
+      }
+
+      const splitState = await getSplitState();
+      if (splitState.splitTabId !== senderTabId) {
+        sendResponse({ ok: false });
+        return;
+      }
+
+      const splitWidthPercent = await setSplitWidthPercent(message.value);
+      sendResponse({ ok: true, splitWidthPercent });
+    })();
+
+    return true;
+  }
 });
 
 chrome.action.onClicked.addListener((tab) => {
@@ -1396,10 +1455,11 @@ async function handleSplitView(tab) {
     await activateSplitView(tab.id, wikipediaArticleUrl || wikipediaUrl, wikipediaUrl);
 
     try {
+      const splitWidthPercent = await getSplitWidthPercent();
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: injectWikipediaFrame,
-        args: [wikipediaUrl]
+        args: [wikipediaUrl, splitWidthPercent]
       });
     } catch (error) {
       await exitSplitView(tab.id);
@@ -1594,10 +1654,24 @@ function removeToast() {
   document.getElementById('grokipedia-toast')?.remove();
 }
 
-function recreateWikiFrame(newUrl) {
+function recreateWikiFrame(newUrl, splitWidthPercent = 50) {
   const container = document.getElementById('wiki-split-container');
   if (!container) {
     return;
+  }
+
+  const numericSplitWidth = Number(splitWidthPercent);
+  const normalizedSplitWidth = Number.isFinite(numericSplitWidth)
+    ? Math.max(20, Math.min(80, numericSplitWidth))
+    : 50;
+  container.style.width = `${normalizedSplitWidth}%`;
+  if (document.body) {
+    document.body.style.setProperty('--wiki-split-width', `${normalizedSplitWidth}%`);
+  }
+  try {
+    window.localStorage.setItem('grokipediaSplitWidthPercent', String(normalizedSplitWidth));
+  } catch {
+    // Ignore page storage errors.
   }
 
   const oldIframe = document.getElementById('wiki-split-iframe');
@@ -1624,12 +1698,23 @@ function recreateWikiFrame(newUrl) {
   }
 }
 
-function injectWikipediaFrame(wikipediaUrl) {
+function injectWikipediaFrame(wikipediaUrl, splitWidthPercent = 50) {
   if (document.getElementById('wiki-split-container')) {
     return;
   }
 
+  const numericSplitWidth = Number(splitWidthPercent);
+  const normalizedSplitWidth = Number.isFinite(numericSplitWidth)
+    ? Math.max(20, Math.min(80, numericSplitWidth))
+    : 50;
+
   document.body.classList.add('wiki-split-active');
+  document.body.style.setProperty('--wiki-split-width', `${normalizedSplitWidth}%`);
+  try {
+    window.localStorage.setItem('grokipediaSplitWidthPercent', String(normalizedSplitWidth));
+  } catch {
+    // Ignore page storage errors.
+  }
 
   const style = document.createElement('style');
   style.id = 'wiki-split-styles';
@@ -1651,7 +1736,7 @@ function injectWikipediaFrame(wikipediaUrl) {
     position: fixed;
     top: 0;
     left: 0;
-    width: 50%;
+    width: ${normalizedSplitWidth}%;
     height: 100vh;
     z-index: 999999;
     background: white;
@@ -1739,6 +1824,7 @@ function injectWikipediaFrame(wikipediaUrl) {
   }
 
   let isDragging = false;
+  let currentWidthPercent = normalizedSplitWidth;
   const onMouseMove = (event) => {
     if (!isDragging) {
       return;
@@ -1748,8 +1834,10 @@ function injectWikipediaFrame(wikipediaUrl) {
     const widthPercent = (newWidth / window.innerWidth) * 100;
 
     if (widthPercent > 20 && widthPercent < 80) {
-      container.style.width = `${widthPercent}%`;
-      document.body.style.setProperty('--wiki-split-width', `${widthPercent}%`);
+      const roundedWidthPercent = Math.round(widthPercent * 10) / 10;
+      currentWidthPercent = roundedWidthPercent;
+      container.style.width = `${roundedWidthPercent}%`;
+      document.body.style.setProperty('--wiki-split-width', `${roundedWidthPercent}%`);
     }
   };
 
@@ -1760,6 +1848,15 @@ function injectWikipediaFrame(wikipediaUrl) {
 
     isDragging = false;
     dragOverlay.style.display = 'none';
+    try {
+      window.localStorage.setItem('grokipediaSplitWidthPercent', String(currentWidthPercent));
+    } catch {
+      // Ignore page storage errors.
+    }
+    chrome.runtime.sendMessage({
+      type: 'setSplitWidthPercent',
+      value: currentWidthPercent
+    });
   };
 
   const cleanupDragListeners = () => {

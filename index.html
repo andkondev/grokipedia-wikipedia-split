@@ -237,10 +237,11 @@
         <li>On-page article title text (for example, a page <code>&lt;h1&gt;</code>) to resolve Wikipedia targets when needed.</li>
       </ul>
 
-      <h3>Data stored in Chrome storage</h3>
+      <h3>Data stored by the extension</h3>
       <ul>
         <li><code>chrome.storage.sync</code>: user preferences such as context-menu enabled state and optional pane-sync setting.</li>
         <li><code>chrome.storage.local</code>: split-view runtime state such as split tab ID, current Wikipedia URL values, and one-time pin reminder flags.</li>
+        <li><code>localStorage</code> on <code>grokipedia.com</code>: split-pane width preference (<code>grokipediaSplitWidthPercent</code>) so the selected pane ratio can be restored quickly on page load.</li>
       </ul>
 
       <h3>Network requests</h3>
@@ -260,10 +261,10 @@
       <p>Developer does not sell user data and does not transfer user data to third parties except as required to load and request pages from the supported sites named above.</p>
 
       <h3>Data retention and deletion</h3>
-      <p>Stored extension settings/state remain in Chrome storage until changed by the user, cleared by the browser, or removed when the extension is uninstalled.</p>
+      <p>Stored settings/state remain in browser storage (including Chrome extension storage and the split-width localStorage value on grokipedia.com) until changed by the user, cleared by the browser, or removed when the extension is uninstalled.</p>
 
       <h3>Security</h3>
-      <p>Data handled by the extension is limited to functional operation and is stored using Chrome extension storage APIs. No separate backend database is used by this extension.</p>
+      <p>Data handled by the extension is limited to functional operation and is stored in browser-managed storage. No separate backend database is used by this extension.</p>
 
     </section>
 
