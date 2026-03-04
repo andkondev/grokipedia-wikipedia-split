@@ -1,5 +1,5 @@
 function isWikipediaHost(hostname) {
-  return hostname === 'wikipedia.org' || hostname.endsWith('.wikipedia.org');
+  return hostname === 'en.wikipedia.org';
 }
 
 function installClickHandler() {

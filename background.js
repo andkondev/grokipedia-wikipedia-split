@@ -1732,7 +1732,52 @@ function injectWikipediaFrame(wikipediaUrl) {
   document.body.appendChild(container);
   document.body.appendChild(dragOverlay);
 
+  const dragCleanupKey = '__wikiSplitDragCleanup';
+  const previousDragCleanup = window[dragCleanupKey];
+  if (typeof previousDragCleanup === 'function') {
+    previousDragCleanup();
+  }
+
+  let isDragging = false;
+  const onMouseMove = (event) => {
+    if (!isDragging) {
+      return;
+    }
+
+    const newWidth = event.clientX;
+    const widthPercent = (newWidth / window.innerWidth) * 100;
+
+    if (widthPercent > 20 && widthPercent < 80) {
+      container.style.width = `${widthPercent}%`;
+      document.body.style.setProperty('--wiki-split-width', `${widthPercent}%`);
+    }
+  };
+
+  const onMouseUp = () => {
+    if (!isDragging) {
+      return;
+    }
+
+    isDragging = false;
+    dragOverlay.style.display = 'none';
+  };
+
+  const cleanupDragListeners = () => {
+    isDragging = false;
+    dragOverlay.style.display = 'none';
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    if (window[dragCleanupKey] === cleanupDragListeners) {
+      window[dragCleanupKey] = null;
+    }
+  };
+
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+  window[dragCleanupKey] = cleanupDragListeners;
+
   closeButton.addEventListener('click', () => {
+    cleanupDragListeners();
     container.remove();
     dragOverlay.remove();
     document.getElementById('wiki-split-styles')?.remove();
@@ -1746,39 +1791,20 @@ function injectWikipediaFrame(wikipediaUrl) {
     chrome.runtime.sendMessage({ type: 'splitClosed' });
   });
 
-  let isDragging = false;
-
   dragHandle.addEventListener('mousedown', (event) => {
     isDragging = true;
     dragOverlay.style.display = 'block';
     event.preventDefault();
   });
-
-  document.addEventListener('mousemove', (event) => {
-    if (!isDragging) {
-      return;
-    }
-
-    const newWidth = event.clientX;
-    const widthPercent = (newWidth / window.innerWidth) * 100;
-
-    if (widthPercent > 20 && widthPercent < 80) {
-      container.style.width = `${widthPercent}%`;
-      document.body.style.setProperty('--wiki-split-width', `${widthPercent}%`);
-    }
-  });
-
-  document.addEventListener('mouseup', () => {
-    if (!isDragging) {
-      return;
-    }
-
-    isDragging = false;
-    dragOverlay.style.display = 'none';
-  });
 }
 
 function removeInjectedSplitUi() {
+  const dragCleanupKey = '__wikiSplitDragCleanup';
+  const cleanupDragListeners = window[dragCleanupKey];
+  if (typeof cleanupDragListeners === 'function') {
+    cleanupDragListeners();
+  }
+
   const container = document.getElementById('wiki-split-container');
   const overlay = document.getElementById('wiki-split-overlay');
 
