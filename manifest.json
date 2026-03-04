@@ -3,6 +3,7 @@
   "name": "Grokipedia + Wikipedia Split View",
   "version": "1.0",
   "description": "View Grokipedia with Wikipedia side-by-side",
+  "homepage_url": "https://andkon.dev/grokipedia-wikipedia-split/",
   "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
   "host_permissions": ["https://grokipedia.com/*", "https://en.wikipedia.org/*"],
   "background": {
