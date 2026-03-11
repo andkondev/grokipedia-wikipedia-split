@@ -246,8 +246,8 @@
 
       <h3>Data stored by the extension</h3>
       <ul>
-        <li><code>chrome.storage.sync</code>: user preferences such as context-menu enabled state and optional pane-sync setting.</li>
-        <li><code>chrome.storage.local</code>: split-view runtime state such as split tab ID, current Wikipedia URL values, and one-time pin reminder flags.</li>
+        <li>Sync extension storage: user preferences such as context-menu enabled state and optional pane-sync setting. On supported browsers, these settings may sync across the user's browser profiles or devices when browser sync is enabled.</li>
+        <li>Local extension storage: split-view runtime state such as split tab ID, current Wikipedia URL values, and one-time pin reminder flags.</li>
         <li><code>localStorage</code> on <code>grokipedia.com</code>: split-pane width preference (<code>grokipediaSplitWidthPercent</code>) so the selected pane ratio can be restored quickly on page load.</li>
       </ul>
 
@@ -271,7 +271,7 @@
       <p>Stored settings/state remain in browser storage (including Chrome extension storage and the split-width localStorage value on grokipedia.com) until changed by the user, cleared by the browser, or removed when the extension is uninstalled.</p>
 
       <h3>Security</h3>
-      <p>Data handled by the extension is limited to functional operation and is stored in browser-managed storage. No separate backend database is used by this extension.</p>
+      <p>Data handled by the extension is limited to functional operation and is stored using browser-managed extension storage or local page storage as described above. No separate backend database is used by this extension.</p>
 
     </section>
 

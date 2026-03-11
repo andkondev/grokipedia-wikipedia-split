@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grokipedia Split View Options</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --line: #dde3ed;
+      --text: #1d2736;
+      --muted: #55657b;
+      --link: #0b57d0;
+      --accent: #1f7f3f;
+      --accent-bg: #effaf2;
+      --accent-line: #cde8d5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(900px 500px at 100% -10%, #d9e7ff 0%, rgba(217, 231, 255, 0) 60%),
+        radial-gradient(700px 500px at -10% 15%, #e8fff1 0%, rgba(232, 255, 241, 0) 65%),
+        var(--bg);
+      background-repeat: no-repeat;
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 34px 24px 40px;
+    }
+
+    .hero {
+      display: flex;
+      gap: 20px;
+      align-items: flex-end;
+      margin-bottom: 14px;
+    }
+
+    .logo {
+      width: 128px;
+      height: 128px;
+      border-radius: 4px;
+      object-fit: cover;
+      flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(17, 24, 39, 0.14);
+      background: #fff;
+      border: 1px solid #e7e7e7;
+    }
+
+    .hero-copy {
+      min-width: 0;
+      padding-bottom: 4px;
+    }
+
+    .title {
+      margin: 0 0 8px;
+      font-size: 34px;
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.35;
+      max-width: 760px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 12px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(31, 41, 55, 0.05);
+      padding: 18px 18px 16px;
+    }
+
+    .option input[type="checkbox"] {
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
+      flex-shrink: 0;
+      accent-color: var(--accent);
+    }
+
+    .option label {
+      cursor: pointer;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .option-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .option-title {
+      font-size: 19px;
+      font-weight: 600;
+      line-height: 1.2;
+      color: var(--text);
+    }
+
+    .option-desc {
+      margin-top: 5px;
+      color: #2f3d52;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .saved-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--accent-line);
+      background: var(--accent-bg);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0;
+      transform: translateY(2px);
+      transition: opacity 0.3s;
+    }
+
+    .saved-badge.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .contact-block {
+      margin-top: 12px;
+    }
+
+    .info-row {
+      align-items: center;
+      gap: 12px;
+    }
+
+    .info-icon-slot {
+      width: 32px;
+      height: 32px;
+      flex: 0 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .info-bug {
+      width: 26px;
+      height: 26px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .info-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      object-fit: cover;
+      display: block;
+      border: 1px solid #e5e5e5;
+      background: #fff;
+    }
+
+    .info-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .info-title {
+      margin: 0;
+      color: var(--text);
+      font-size: 19px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .info-desc {
+      margin-top: 5px;
+      color: #2f3d52;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .info-desc a {
+      color: var(--link);
+      text-decoration: none;
+    }
+
+    .info-desc a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 900px) {
+      .page {
+        padding: 20px 16px 28px;
+      }
+
+      .hero {
+        align-items: center;
+      }
+
+      .logo {
+        width: 96px;
+        height: 96px;
+      }
+
+      .title {
+        font-size: 28px;
+      }
+
+      .subtitle {
+        font-size: 14px;
+      }
+
+      .row {
+        padding: 15px 14px 13px;
+      }
+
+      .option input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+      }
+
+      .option-title {
+        font-size: 17px;
+      }
+
+      .option-desc {
+        font-size: 13px;
+      }
+
+      .info-title {
+        font-size: 17px;
+      }
+
+      .info-desc {
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <img src="icon128.png" alt="Grokipedia Split View logo" class="logo">
+      <div class="hero-copy">
+        <h1 class="title">Grokipedia + Wikipedia Split View</h1>
+        <p class="subtitle">Configure context menu behavior and pane syncing.</p>
+      </div>
+    </header>
+
+    <div class="row option">
+      <input type="checkbox" id="contextMenu" checked>
+      <label for="contextMenu">
+        <div class="option-head">
+          <div class="option-title">Show in right-click menu</div>
+          <span class="saved-badge" id="savedContextMenu">Saved</span>
+        </div>
+        <div class="option-desc">Add "Open in Grokipedia/Wikipedia Split View" to the context menu on Wikipedia and Grokipedia pages.</div>
+      </label>
+    </div>
+
+    <div class="row option">
+      <input type="checkbox" id="syncArticles">
+      <label for="syncArticles">
+        <div class="option-head">
+          <div class="option-title">Sync articles across panes (can be buggy)</div>
+          <span class="saved-badge" id="savedSyncArticles">Saved</span>
+        </div>
+        <div class="option-desc">When enabled, opening a new article updates the other pane too. Caution: may break because of non-uniform Grokipedia URLs.</div>
+      </label>
+    </div>
+
+    <div class="contact-block">
+      <div class="row info-row">
+        <span class="info-icon-slot" aria-hidden="true">
+          <img src="andkon-dev-logo.png" alt="" class="info-avatar">
+        </span>
+        <div class="info-content">
+          <div class="info-title">Support and links</div>
+          <div class="info-desc">Project homepage: <a href="https://andkon.dev/grokipedia-wikipedia-split/" target="_blank" rel="noopener">andkon.dev/grokipedia-wikipedia-split/</a></div>
+          <div class="info-desc">Repository: <a href="https://github.com/andkondev/grokipedia-wikipedia-split" target="_blank" rel="noopener">github.com/andkondev/grokipedia-wikipedia-split</a></div>
+          <div class="info-desc">Issues: <a href="https://github.com/andkondev/grokipedia-wikipedia-split/issues" target="_blank" rel="noopener">github.com/andkondev/grokipedia-wikipedia-split/issues</a></div>
+          <div class="info-desc">Email/PayPal/tips: <a href="mailto:andkon@andkon.com">andkon@andkon.com</a></div>
+          <div class="info-desc">Developer site: <a href="https://andkon.dev" target="_blank" rel="noopener">andkon.dev</a></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="options.js"></script>
+</body>
+</html>

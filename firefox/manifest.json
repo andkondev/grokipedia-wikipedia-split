@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Grokipedia + Wikipedia Split View",
+  "version": "1.0",
+  "description": "View Grokipedia with Wikipedia side-by-side",
+  "homepage_url": "https://andkon.dev/grokipedia-wikipedia-split/",
+  "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
+  "host_permissions": ["https://grokipedia.com/*", "https://en.wikipedia.org/*"],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [{
+    "matches": ["https://grokipedia.com/*"],
+    "css": ["grokipedia.css"],
+    "js": ["grokipedia-early.js"],
+    "run_at": "document_start"
+  }, {
+    "matches": ["https://en.wikipedia.org/*"],
+    "js": ["wikipedia-iframe.js"],
+    "run_at": "document_end",
+    "all_frames": true
+  }],
+  "action": {
+    "default_title": "Open in Grokipedia with Wikipedia"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "web_accessible_resources": [{
+    "resources": ["icon48.png"],
+    "matches": ["https://grokipedia.com/*", "https://en.wikipedia.org/*"]
+  }],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "grokipedia-split@andkon.dev",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+/* Only applied when split mode is active - controlled by JS */
+body.wiki-split-active {
+  --wiki-split-width: 50%;
+  margin-left: var(--wiki-split-width) !important;
+  width: calc(100% - var(--wiki-split-width)) !important;
+  position: relative !important;
+  overflow-x: hidden !important;
+}
+
+body.wiki-split-active nav,
+body.wiki-split-active aside,
+body.wiki-split-active [class*="sidebar"],
+body.wiki-split-active [class*="Sidebar"],
+body.wiki-split-active [class*="toc"] {
+  display: none !important;
+}
+
+/* Generic split-mode docking for centered fixed bottom controls/pills. */
+body.wiki-split-active div[class*="fixed"][class*="bottom-"][class*="left-1/2"][class*="-translate-x-1/2"] {
+  left: auto !important;
+  right: 5rem !important;
+  transform: none !important;
+  max-width: calc(100% - var(--wiki-split-width) - 6rem) !important;
+}
+
+/* Keep Grokipedia command/search overlays in the right pane while split. */
+body.wiki-split-active div[class*="fixed"][class*="inset-0"][class*="justify-center"]:has([cmdk-root]) {
+  left: var(--wiki-split-width) !important;
+  right: 0 !important;
+}
