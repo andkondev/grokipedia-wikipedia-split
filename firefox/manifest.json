@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Grokipedia + Wikipedia Split View",
-  "version": "1.0",
+  "version": "1.0.1",
   "description": "View Grokipedia with Wikipedia side-by-side",
   "homepage_url": "https://andkon.dev/grokipedia-wikipedia-split/",
   "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
@@ -40,13 +40,10 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "grokipedia-split@andkon.dev",
-      "strict_min_version": "140.0",
+      "strict_min_version": "142.0",
       "data_collection_permissions": {
         "required": ["none"]
       }
-    },
-    "gecko_android": {
-      "strict_min_version": "142.0"
     }
   }
 }
